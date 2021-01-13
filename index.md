@@ -7,19 +7,7 @@ output:
     self_contained: no
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-library(tidyverse)
-library(knitr)
-library(rpart)
-library(rpart.plot)
-library(zoo)
-library(readxl)
-library(lubridate)
-library(magick)
-library(data.table)
-library(pracma)
-```
+
 
 # Articles
 
@@ -27,10 +15,7 @@ library(pracma)
 Publishers hypothesis was high-frequency trading creates liquidity risk which is even substantial as market risk. China tried to prevent liquidity risks by increasing transaction fee from 0.115‰ to 2.3‰.
 In below graph we can clearly see trading restriction policy had huge impact in stock market.
 
-```{r, echo=FALSE}
-img = magick::image_read('.\\images\\statisticsArticleGraph01.png')
-plot(img)
-```
+![](index_files/figure-html/unnamed-chunk-1-1.png)<!-- -->
 
 By using LvaR model we can see that trade restriction dropped liquidity risks from 16.89% to 4.04% which shows as HFT actually reduces liquidity risks.
 
@@ -41,43 +26,19 @@ Some researchers claims that HFT reduces spread between bids and ask prices, pro
 
 # High-frequency trading statistics and analysis
 
-```{r, echo=FALSE, warning=FALSE, message=FALSE}
-raw_df = read_xlsx(".\\data\\statisticsFinalData.xlsx")
 
-clean_df = raw_df %>%
-  select(Order_time, Order_ID, BUY_SELL, Order_Type, Exchange_Order_Type, Order_Category, Duration, Order_size, Order_Remaining, Order_seen_iceberg, Order_price, Best_Bid, Best_Ask, Order_Actualized)
-
-getmode <- function(v) {
-   uniqv <- unique(v)
-   uniqv[which.max(tabulate(match(v, uniqv)))]
-}
-```
 
 ## Detecting outliers
 
 Before we make any analysis about our dataset it is easier to look at the dataset with simple visualization and try to understand our dataset.
 
-```{r, echo=FALSE, warning=FALSE, message=FALSE}
-distinct_bids_df = clean_df %>%
-  select(Order_time, Best_Bid, Best_Ask) %>%
-  na.omit(.) %>%
-  filter(., Best_Bid != 0, Best_Ask != 0) %>%
-  distinct(.) %>%
-  transmute(Order_time, order_no=row_number(), Best_Bid, Best_Ask)
-
-distinct_bids_df %>%
-  ggplot(aes(x = order_no)) +
-  geom_line(aes(y= Best_Bid, colour = 'Best Bid'), alpha = 0.7, size = 1) +
-  geom_line(aes(y= Best_Ask, colour = 'Best Ask'), alpha = 0.7, size = 1) +
-  labs(x = "Order Time", y = "Price", color = "") +
-  theme_minimal() +
-  theme(axis.text.x=element_blank())
-```
+![](index_files/figure-html/unnamed-chunk-3-1.png)<!-- -->
 Here we can clearly see that there are some outliers in this dataset which has lower best ask values than best bids if there is no error in the system we can take advantage of those values and buy and sell values immediately. 
 
 However it is not the only way to see the outliers, we can take lower bounds and upper bounds to see outliers more clearly.
 
-```{r}
+
+```r
 QR1 = as.numeric(clean_df %>%
   drop_na(Best_Bid) %>%
   summarise(fivenum(Best_Bid)[2]))
@@ -121,16 +82,20 @@ clean_df %>%
  labs(x = "Order Time", y = "Best Bid", color = "") +
  theme_minimal()
 ```
-```{r, echo=FALSE}
-cat(paste(c('25% of the values are below ',round(QR1,2),'(QR1)
-25% of the values are between ',round(QR1,2), '(QR1) and ',round(Median,2),'(Median/QR2)
-25% of the values are between ',round(Median,2),'(Median/QR2) and',round(QR3,2),'(QR3)
-25% of the values are above',round(QR3,2),'(QR3)
-Lower Bound: ',round(lower_bound,2),' Upper Bound: ',round(upper_bound,2),' Mean: ',round(average,2),' Mode: ',round(mode,2), collapse = "")))
+
+![](index_files/figure-html/unnamed-chunk-4-1.png)<!-- -->
+
+```
+## 25% of the values are below  11.57 (QR1)
+## 25% of the values are between  11.57 (QR1) and  11.59 (Median/QR2)
+## 25% of the values are between  11.59 (Median/QR2) and 11.62 (QR3)
+## 25% of the values are above 11.62 (QR3)
+## Lower Bound:  11.5  Upper Bound:  11.69  Mean:  11.04  Mode:  11.6
 ```
 
 
-```{r}
+
+```r
 QR1 = as.numeric(clean_df %>%
   drop_na(Best_Ask) %>%
   summarise(fivenum(Best_Ask)[2]))
@@ -173,48 +138,30 @@ clean_df %>%
  theme_minimal()
 ```
 
-```{r, echo=FALSE}
-cat(paste(c('25% of the values are below ',round(QR1,2),'(QR1)
-25% of the values are between ',round(QR1,2), '(QR1) and ',round(Median,2),'(Median/QR2)
-25% of the values are between ',round(Median,2),'(Median/QR2) and',round(QR3,2),'(QR3)
-25% of the values are above',round(QR3,2),'(QR3)
-Lower Bound: ',round(lower_bound,2),' Upper Bound: ',round(upper_bound,2),' Mean: ',round(average,2),' Mode: ',round(mode,2), collapse = "")))
+![](index_files/figure-html/unnamed-chunk-6-1.png)<!-- -->
+
+
+```
+## 25% of the values are below  11.58 (QR1)
+## 25% of the values are between  11.58 (QR1) and  11.6 (Median/QR2)
+## 25% of the values are between  11.6 (Median/QR2) and 11.63 (QR3)
+## 25% of the values are above 11.63 (QR3)
+## Lower Bound:  11.5  Upper Bound:  11.71  Mean:  11.18  Mode:  11.61
 ```
 
 ## Classification Tree
 
 In below example we are going to create a classification tree with best_bid, best_ask, buy_sell and order_size variables our aim is to find a correlation between these variables and order actualization(whether order is successful or not).
 
-```{r, echo=FALSE, warning=FALSE, message=FALSE}
+![](index_files/figure-html/unnamed-chunk-8-1.png)<!-- -->
 
-analytical_df = clean_df %>%
-  transmute(Order_Actualized, Order_price, Best_Ask, Best_Bid, BUY_SELL, Order_Type, Order_Category, Duration, Order_size) %>%
-  na.omit(.)
-
-sample_size = floor(0.85 * nrow(analytical_df))
-set.seed(9999)
-
-train_index = sample(seq_len(nrow(analytical_df)), size = sample_size)
-
-train_df = analytical_df[train_index, ]
-test_df = analytical_df[-train_index, ]
-
-regression_tree = rpart(Order_Actualized~., data = train_df, method="class", control=rpart.control(minsplit=3, minbucket=1, cp=0.0006))
-rpart.plot(regression_tree, type = 3, box.palette = "Blues")
-```
-```{r, echo=FALSE, warning=FALSE, message=FALSE}
-rgs_tree_cpt = regression_tree$cptable
-knitr::kable(rgs_tree_cpt, format="markdown", align='cc')
-```
+|    CP     | nsplit | rel error | xerror |   xstd    |
+|:---------:|:------:|:---------:|:------:|:---------:|
+| 0.0006895 |   0    | 1.0000000 |   1    | 0.0086599 |
+| 0.0006000 |   7    | 0.9951734 |   1    | 0.0086599 |
 
 
-```{r, echo=FALSE, warning=FALSE, message=FALSE, results='asis'}
-predict_df = predict(regression_tree, test_df, type = 'class')
-prediction_table = table(test_df$Order_Actualized, predict_df)
-
-prediction_rate = (prediction_table[1,1]+prediction_table[2,2])/sum(prediction_table)
-cat(paste(c('Our CART model has ',round(prediction_rate*100,2),'% correct prediction rate.'), collapse = ""))
-```
+Our CART model has 65.58% correct prediction rate.
 
 ## Investing
 
@@ -222,7 +169,8 @@ In our investing plan we are going to use Lee and Ready trade algorithm which is
 
 We are going to filter values where it is suitable for us and try to buy/sell stocks where we calculate profitable.
 
-```{r, results='asis'}
+
+```r
 getTradeDirection_LR <- function(bid, ask, price) {
   midpoint = (bid + ask)/2
   rets = diff(price)
@@ -271,6 +219,9 @@ for(i in 600:nrow(distinct_prices_LR_df)) {
 cat(paste(c('Our Money:',formatC(money, format="f", big.mark=",", digits=2), '\nOur stock count:', stock_count)))
 ```
 
+Our Money: 99,264.48 
+Our stock count: 58
+
 Here we can see that our method failed to find best investing opportunities so we should try another method.
 
 We are going to combine Kairi and MACD methods which focuses on basically moving averages and tries to find best opportunities from there.
@@ -279,7 +230,8 @@ MACD compares moving averages from 12 days and 26 days and decides whether to bu
 
 Kairi method which is created by Japanese investor compares moving maximum and moving minimum values with current midpoints and decides whether to buy or sell.
 
-```{r, results='asis'}
+
+```r
 getTradeDirection_fib_df = clean_df %>%
   select(Order_time, BUY_SELL, Order_price, Best_Bid, Best_Ask, Order_size) %>%
   na.omit(.) %>%
@@ -335,6 +287,10 @@ for(i in 1:nrow(getTradeDirection_fib_df)) {
 
 cat(paste(c('Our Money:',formatC(money, format="f", big.mark=",", digits=2), '\nOur stock count:', stock_count,' with the average stock price: ', round(mean(getTradeDirection_fib_df$midpoint),2), '\nWe made ',round(money-100000+(mean(getTradeDirection_fib_df$midpoint)*stock_count),2),' profit')))
 ```
+
+Our Money: 76,172.89 
+Our stock count: 2055  with the average stock price:  11.6 
+We made  8.7  profit
 
 Albeit our profit is small it is based on statistics and investing methodologies and we can consider that our model is successful.
 
