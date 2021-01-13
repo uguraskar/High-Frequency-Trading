@@ -3,8 +3,12 @@ title: "High Frequency Trading"
 author: "Ugur Askar"
 output:
   html_document:
-    keep_md: yes
-    self_contained: no
+    code_folding: hide
+    toc: true
+    toc_float:
+      collapsed: true
+      smooth_scroll: false
+    number_sections: true
 ---
 
 ```{r setup, include=FALSE}
@@ -41,7 +45,7 @@ Some researchers claims that HFT reduces spread between bids and ask prices, pro
 
 # High-frequency trading statistics and analysis
 
-```{r, echo=FALSE, warning=FALSE, message=FALSE}
+```{r, warning=FALSE, message=FALSE}
 raw_df = read_xlsx(".\\data\\statisticsFinalData.xlsx")
 
 clean_df = raw_df %>%
@@ -173,7 +177,7 @@ clean_df %>%
  theme_minimal()
 ```
 
-```{r, echo=FALSE}
+```{r}
 cat(paste(c('25% of the values are below ',round(QR1,2),'(QR1)
 25% of the values are between ',round(QR1,2), '(QR1) and ',round(Median,2),'(Median/QR2)
 25% of the values are between ',round(Median,2),'(Median/QR2) and',round(QR3,2),'(QR3)
@@ -185,7 +189,7 @@ Lower Bound: ',round(lower_bound,2),' Upper Bound: ',round(upper_bound,2),' Mean
 
 In below example we are going to create a classification tree with best_bid, best_ask, buy_sell and order_size variables our aim is to find a correlation between these variables and order actualization(whether order is successful or not).
 
-```{r, echo=FALSE, warning=FALSE, message=FALSE}
+```{r, warning=FALSE, message=FALSE}
 
 analytical_df = clean_df %>%
   transmute(Order_Actualized, Order_price, Best_Ask, Best_Bid, BUY_SELL, Order_Type, Order_Category, Duration, Order_size) %>%
@@ -208,7 +212,7 @@ knitr::kable(rgs_tree_cpt, format="markdown", align='cc')
 ```
 
 
-```{r, echo=FALSE, warning=FALSE, message=FALSE, results='asis'}
+```{r, warning=FALSE, message=FALSE, results='asis'}
 predict_df = predict(regression_tree, test_df, type = 'class')
 prediction_table = table(test_df$Order_Actualized, predict_df)
 
@@ -217,6 +221,8 @@ cat(paste(c('Our CART model has ',round(prediction_rate*100,2),'% correct predic
 ```
 
 ## Investing
+
+### Lee and Ready Method
 
 In our investing plan we are going to use Lee and Ready trade algorithm which is published at 1991 for investing plan which calculates midpoint for ask and bid prices and compare it with order price to find if it's suitable to buy the stock or not.
 
@@ -272,6 +278,8 @@ cat(paste(c('Our Money:',formatC(money, format="f", big.mark=",", digits=2), '\n
 ```
 
 Here we can see that our method failed to find best investing opportunities so we should try another method.
+
+### Kairi and MACD Methods Combined
 
 We are going to combine Kairi and MACD methods which focuses on basically moving averages and tries to find best opportunities from there.
 
